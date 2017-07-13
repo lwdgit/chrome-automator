@@ -10,8 +10,6 @@ chrome()
   return chrome().goto(url)
 })
 .wait('[id^="highlighter_"]')
-.evaluate(async function() {
-  return document.querySelectorAll('.para-title.level-3')[9].nextElementSibling.querySelector('.code').textContent
-})
+.evaluate(() =>  document.querySelectorAll('.para-title.level-3')[9].nextElementSibling.querySelector('.code').textContent)
 .then((code) => console.log(code))
 
