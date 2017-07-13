@@ -4,7 +4,7 @@ let launcher
 exports.launch = async function (opts = {}) {
   if (!launcher) {
     launcher = await launchWithoutNoise(Object.assign({
-      //port: 9222,
+      port: 9222,
       // autoSelectChrome: true,
       // chromePath: __dirname + '/chrome.sh',
       // chromePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
