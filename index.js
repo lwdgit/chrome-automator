@@ -5,7 +5,7 @@ const { Flow } = require('myflow')
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 
-class Container extends Flow {
+class Automator extends Flow {
   constructor () {
     super()
     Chrome().
@@ -14,6 +14,7 @@ class Container extends Flow {
       this.run()
     })
   }
+  
   goto (url) {
     return this.pipe(function () {
       return this.chrome.Page.navigate({ url })
@@ -38,21 +39,46 @@ class Container extends Flow {
 
   waitSelector (selector) {
     return this.waitfn(function(selector) {
-      return !!document.querySelector(selector)
+      return !!top.currentWindow.document.querySelector(selector)
     }, selector)
   }
 
   wait (arg, timeout = 30000) {
     return this.pipe(function () {
       if (typeof arg === 'number') {
+        debug('.wait() '+ arg +'msec');
         return sleep(arg)
       } else if (typeof arg === 'string') {
-        debug('.wait() for '+arg+' element'+(timeout ? ' or '+timeout+'msec' : ''));
+        debug('.wait() for '+ arg +' element' + (timeout ? ' or '+timeout+'msec' : ''));
         return this.waitSelector(arg)
       } else if (typeof arg === 'function') {
-        debug('.wait() for '+arg+' function '+(timeout ? ' or '+timeout+'msec' : ''));
+        debug('.wait() for ' + arg + ' function ' + (timeout ? ' or '+timeout+'msec' : ''));
         return this.waitfn(arg)
       }
+    })
+  }
+
+  iframe(selector) {
+    return this.pipe(function() {
+      return this.evaluate_now(async function(selector) {
+        try {
+          top.iframeStacks.push(top.currentWindow.document.querySelector(selector))
+          top.windowStacks.push(top.iframeStacks[top.iframeStacks.length - 1].contentWindow)
+        } catch (e) {
+          console.info('goto iframe error')
+        }
+      }, selector)
+    })
+  }
+  
+  parent() {
+    return this.pipe(function() {
+      return this.evaluate_now(async function(selector) {
+        if (top.windowStacks.length > 1) {
+          top.iframeStacks.pop()
+          top.windowStacks.pop()
+        }
+      })
     })
   }
 
@@ -60,34 +86,37 @@ class Container extends Flow {
     // console.log(`Promise.resolve((${fn.toString()})(${args.map((arg) => JSON.stringify(jsesc(arg))).join()}))`)
     
     return this.chrome.Runtime.evaluate({
-      expression: `Promise.resolve((${fn.toString()})(${args.map((arg) => JSON.stringify(jsesc(arg))).join()}))`,
-      awaitPromise: true
+      expression: `
+      top.currentWindow = (top.windowStacks || (top.windowStacks = [window]))[top.windowStacks.length - 1];
+      top.iframeStacks = top.iframeStacks || []
+      Promise.resolve((${fn.toString()})(${args.map((arg) => JSON.stringify(jsesc(arg))).join()}))`,
+      awaitPromise: true 
     })
   }
 
   visible (selector) {
-    return this.pipe(function (selector) {
+    return this.pipe(async function (selector) {
       debug('.visible() for ' + selector);
-      this.evaluate_now(async function(selector) {
-        var elem = document.querySelector(selector);
+      return (await this.evaluate_now(function(selector) {
+        var elem = top.currentWindow.document.querySelector(selector);
         if (elem) return (elem.offsetWidth > 0 && elem.offsetHeight > 0);
         else return false;
-      }, selector);
+      }, selector)).result.value;
     })
   }
 
   exists (selector) {
-    return this.pipe(function (selector) {
+    return this.pipe(async function () {
       debug('.exists() for ' + selector);
-      return this.evaluate_now(function(selector) {
-        return (document.querySelector(selector) !== null);
-      }, selector);
+      return (await this.evaluate_now(function(selector) {
+        return (top.currentWindow.document.querySelector(selector) !== null);
+      }, selector)).result.value;
     })
   }
 
   focusSelector (selector) {
     return this.evaluate_now(function(selector) {
-      document.querySelector(selector).focus();
+      top.currentWindow.document.querySelector(selector).focus();
     }, selector);
   }
 
@@ -95,7 +124,7 @@ class Container extends Flow {
     return this.evaluate_now(function(selector) {
       //it is possible the element has been removed from the DOM
       //between the action and the call to blur the element
-      var element = document.querySelector(selector);
+      var element = top.currentWindow.document.querySelector(selector);
       if(element) {
         element.blur()
       }
@@ -103,18 +132,27 @@ class Container extends Flow {
   }
 
   async findPositionInWindow (obj) {
-    return (await this.evaluate_now(function (obj, sleep) {
+    return (await this.evaluate_now(async function (obj, sleep) {
+      console.log(top.currentWindow)
       if (typeof obj === 'string') {
         var expression = obj
-        obj = document.querySelector(expression)
+        obj = top.currentWindow.document.querySelector(expression)
         if (!obj) {
           throw new Error('cannot find an object using expression ' + expression)
         }
       }
       obj.scrollIntoViewIfNeeded()
-      var rect = obj.getBoundingClientRect()
-      return [ rect.x + 1, rect.y + 1 ].join()
-    }, obj)).result.value || '-1,-1'
+      let rect = obj.getBoundingClientRect()
+      let offsetLeft = 0
+      let offsetTop = 0
+      
+      for(let w, i = 0; w = top.iframeStacks[i++];) {
+        let r = w.getBoundingClientRect()
+        offsetLeft += r.x
+        offsetTop += r.y
+      }
+      return [ rect.x + rect.width / 2 + offsetLeft, rect.y + rect.height / 2 + offsetTop].join()
+    }, obj, sleep)).result.value || '-1,-1'
   }
 
   _touch (client, x, y) {
@@ -184,11 +222,11 @@ class Container extends Flow {
       await this.clickSelector(selector)
       if ((text || '') == '') {
         await this.evaluate_now(async function(selector) {
-          document.querySelector(selector).value = '';
+          top.currentWindow.document.querySelector(selector).value = '';
         }, selector);
       } else {
         await this.evaluate_now(async function(selector, text) {
-          document.querySelector(selector).value = text;
+          top.currentWindow.document.querySelector(selector).value = text;
         }, selector, text);
       }
       await this.blurSelector(selector)
@@ -223,11 +261,11 @@ class Container extends Flow {
     return this.pipe(function() {
       debug('.mousedown() on ' + selector);
       return this.evaluate_now(async function (selector) {
-        var element = document.querySelector(selector);
+        var element = top.currentWindow.document.querySelector(selector);
         if (!element) {
           throw new Error('Unable to find element by selector: ' + selector);
         }
-        var event = document.createEvent('MouseEvent');
+        var event = top.currentWindow.document.createEvent('MouseEvent');
         event.initEvent('mousedown', true, true);
         element.dispatchEvent(event);
       }, selector);
@@ -238,11 +276,11 @@ class Container extends Flow {
     return this.pipe(function() {
       debug('.mouseup() on ' + selector);
       return this.evaluate_now(async function (selector) {
-        var element = document.querySelector(selector);
+        var element = top.currentWindow.document.querySelector(selector);
         if (!element) {
           throw new Error('Unable to find element by selector: ' + selector);
         }
-        var event = document.createEvent('MouseEvent');
+        var event = top.currentWindow.document.createEvent('MouseEvent');
         event.initEvent('mouseup', true, true);
         element.dispatchEvent(event);
       }, selector);
@@ -253,11 +291,11 @@ class Container extends Flow {
     return this.pipe(function() {
       debug('.mouseover() on ' + selector);
       return this.evaluate_now(async function (selector) {
-        var element = document.querySelector(selector);
+        var element = top.currentWindow.document.querySelector(selector);
         if (!element) {
           throw new Error('Unable to find element by selector: ' + selector);
         }
-        var event = document.createEvent('MouseEvent');
+        var event = top.currentWindow.document.createEvent('MouseEvent');
         event.initMouseEvent('mouseover', true, true);
         element.dispatchEvent(event);
       }, selector);
@@ -268,8 +306,8 @@ class Container extends Flow {
     return this.pipe(function () {
       debug('.check() ' + selector);
       return this.evaluate_now(async function(selector) {
-        var element = document.querySelector(selector);
-        var event = document.createEvent('HTMLEvents');
+        var element = top.currentWindow.document.querySelector(selector);
+        var event = top.currentWindow.document.createEvent('HTMLEvents');
         element.checked = true;
         event.initEvent('change', true, true);
         element.dispatchEvent(event);
@@ -281,8 +319,8 @@ class Container extends Flow {
     return this.pipe(function() {
       debug('.uncheck() ' + selector);
       return this.evaluate_now(async function(selector) {
-        var element = document.querySelector(selector);
-        var event = document.createEvent('HTMLEvents');
+        var element = top.currentWindow.document.querySelector(selector);
+        var event = top.currentWindow.document.createEvent('HTMLEvents');
         element.checked = null;
         event.initEvent('change', true, true);
         element.dispatchEvent(event);
@@ -292,10 +330,10 @@ class Container extends Flow {
 
   select (selector, option) {
     return this.pipe(function() {
-      return debug('.select() ' + selector);
-      this.evaluate_now(async function(selector, option) {
-        var element = document.querySelector(selector);
-        var event = document.createEvent('HTMLEvents');
+      debug('.select() ' + selector);
+      return this.evaluate_now(async function(selector, option) {
+        var element = top.currentWindow.document.querySelector(selector);
+        var event = top.currentWindow.document.createEvent('HTMLEvents');
         element.value = option;
         event.initEvent('change', true, true);
         element.dispatchEvent(event);
@@ -307,7 +345,7 @@ class Container extends Flow {
     return this.pipe(function() {
       debug('.back()');
       return this.evaluate_now(async function() {
-        window.history.back()
+        top.currentWindow.history.back()
       })
     })
   }
@@ -316,7 +354,7 @@ class Container extends Flow {
     return this.pipe(function() {
       debug('.forward()')
       return this.evaluate_now(async function() {
-        window.history.forward()
+        top.currentWindow.history.forward()
       })
     })
   }
@@ -325,7 +363,7 @@ class Container extends Flow {
     return this.pipe(function () {
       debug('.refresh()')
       return this.evaluate_now(async function() {
-        window.location.reload()
+        top.currentWindow.location.reload()
       })
     })
   }
@@ -337,11 +375,11 @@ class Container extends Flow {
       await this.focusSelector(selector)
       if ((text || '') == '') {
         await this.evaluate_now(async function(selector) {
-          document.querySelector(selector).value = '';
+          top.currentWindow.document.querySelector(selector).value = '';
         }, selector);
       } else {
         await this.evaluate_now(async function(selector, text) {
-          document.querySelector(selector).value = text;
+          top.currentWindow.document.querySelector(selector).value = text;
         }, selector, text);
       }
       await this.blurSelector(selector)
@@ -359,14 +397,14 @@ class Container extends Flow {
   title () {
     return this.pipe(async function() {
       return (await this.evaluate_now(async function() {
-        return document.title
+        return top.currentWindow.document.title
       })).result.value
     })
   }
 
   end () {
     return this.pipe(async function() {
-      this.chrome.close()
+      process.exit()
     })
   }
   
@@ -377,15 +415,29 @@ class Container extends Flow {
   }
 
   then(fn) {
-    return this.pipe(fn)
+    return this.pipe(function() {
+      let result = fn.apply(this, arguments)
+      if (result != null && result.then && result instanceof Automator) {
+        return new Promise(resolve => result.then(resolve))
+      } else {
+        return result
+      }
+    })
   }
 
   click (selector) {
     return this.pipe(async function () {
+      debug('.click() ' + selector);
       await this.waitSelector(selector)
       return this.clickSelector(selector)
     })
   }
 }
 
-module.exports = Container
+module.exports = function () {
+  if (!(this.constructor instanceof Automator)) {
+    return new Automator()
+  } else {
+    return this
+  }
+} 
