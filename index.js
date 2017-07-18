@@ -133,7 +133,6 @@ class Automator extends Flow {
 
   async findPositionInWindow (obj) {
     return (await this.evaluate_now(async function (obj, sleep) {
-      console.log(top.currentWindow)
       if (typeof obj === 'string') {
         var expression = obj
         obj = top.currentWindow.document.querySelector(expression)
@@ -145,13 +144,12 @@ class Automator extends Flow {
       let rect = obj.getBoundingClientRect()
       let offsetLeft = 0
       let offsetTop = 0
-      
       for(let w, i = 0; w = top.iframeStacks[i++];) {
         let r = w.getBoundingClientRect()
-        offsetLeft += r.x
-        offsetTop += r.y
+        offsetLeft += r.left
+        offsetTop += r.top
       }
-      return [ rect.x + rect.width / 2 + offsetLeft, rect.y + rect.height / 2 + offsetTop].join()
+      return [ rect.left + rect.width / 2 + offsetLeft, rect.top + rect.height / 2 + offsetTop].join()
     }, obj, sleep)).result.value || '-1,-1'
   }
 
