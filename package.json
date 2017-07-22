@@ -8,6 +8,7 @@
     "chrome-remote-interface": "^0.24.2",
     "debug": "^2.6.8",
     "jsesc": "^2.5.1",
+    "lighthouse": "^2.3.0",
     "myflow": "^0.1.1",
     "rimraf": "^2.6.1"
   },
