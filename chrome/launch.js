@@ -3,13 +3,15 @@ const { launch } = require('lighthouse/chrome-launcher')
 let launcher
 
 exports.launch = async function (opts = {}) {
+  const { port = 9222, chromeFlags = [] } = opts
   if (!launcher) {
     launcher = await launch(Object.assign({
-      // port: 9222,
+      port,
       // autoSelectChrome: true,
       // chromePath: __dirname + '/chrome.sh',
       // chromePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
       chromeFlags: [
+        ...chromeFlags,
         '--debug-devtools',
         '--no-sandbox',
         '--remote-debugging-address=0.0.0.0',

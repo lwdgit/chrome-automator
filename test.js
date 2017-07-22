@@ -1,15 +1,15 @@
 const chrome = require('.')
 
-chrome()
+chrome({ show: false })
 .goto('https://www.baidu.com/')
+.wait('body')
 .insert('input#kw', 'hello world\r')
 .wait('.c-container a')
 .evaluate(() => document.querySelector('.c-container a').href)
-.then(function(url) {
+.then(function (url) {
   console.log(url)
   return chrome().goto(url)
 })
 .wait('[id^="highlighter_"]')
-.evaluate(() =>  document.querySelectorAll('.para-title.level-3')[9].nextElementSibling.querySelector('.code').textContent)
+.evaluate(() => document.querySelectorAll('.para-title.level-3')[9].nextElementSibling.querySelector('.code').textContent)
 .then((code) => console.log(code))
-
