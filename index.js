@@ -18,24 +18,26 @@ class Automator extends Flow {
       port: 9222
     }, opts)
 
-    process.nextTick(() => {
-      let flags = {}
-      if (!options.show) {
-        (flags.chromeFlags || (flags.chromeFlags = [])).push('--headless')
-      }
+    let flags = {
+      port: options.port,
+      chromeFlags: opts.chromeFlags || []
+    }
 
-      if (options.windowSize) {
-        flags.chromeFlags.push('--window-size=' + options.windowSize.join(','))
-      }
+    if (!options.show) {
+      flags.chromeFlags.push('--headless')
+    }
 
-      Chrome(flags)
-      .then((chrome) => {
-        this.chrome = chrome
-        this.run()
-      })
-      .catch(function (e) {
-        console.log(e)
-      })
+    if (options.windowSize) {
+      flags.chromeFlags.push('--window-size=' + options.windowSize.join(','))
+    }
+
+    Chrome(flags)
+    .then((chrome) => {
+      this.chrome = chrome
+      this.run()
+    })
+    .catch(function (e) {
+      console.log(e)
     })
   }
 
@@ -557,6 +559,13 @@ class Automator extends Flow {
         return result
       }
     })
+    // let promise = new Promise((resolve) => {
+    //   this.pipe(function () {
+    //     resolve(fn.apply(this, arguments))
+    //   })
+    // })
+    // promise.__proto__ = this // eslint-disable-line
+    // return promise
   }
 
   catch () {
