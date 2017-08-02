@@ -3,34 +3,51 @@ const debug = require('debug')('chrome')
 const jsesc = require('jsesc')
 const { Flow } = require('myflow')
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+const fs = require('fs')
+const { extname } = require('path')
 
 class Automator extends Flow {
   constructor (opts = {}) {
     super()
-    let flags = {
-      port: opts.port || 9222
-    }
-    if (opts.show === false) {
-      (flags.chromeFlags || (flags.chromeFlags = [])).push('--headless')
-    }
-    Chrome(flags)
-    .then((chrome) => {
-      this.chrome = chrome
-      this.run()
-    })
-    .catch(function (e) {
-      console.log(e)
+    let options = this.options = Object.assign({
+      show: true,
+      waitTimeout: 30000,
+      executionTimeout: 10000,
+      loadTimeout: 10000,
+      windowSize: [ 1920, 1600 ],
+      port: 9222
+    }, opts)
+
+    process.nextTick(() => {
+      let flags = {}
+      if (!options.show) {
+        (flags.chromeFlags || (flags.chromeFlags = [])).push('--headless')
+      }
+
+      if (options.windowSize) {
+        flags.chromeFlags.push('--window-size=' + options.windowSize.join(','))
+      }
+
+      Chrome(flags)
+      .then((chrome) => {
+        this.chrome = chrome
+        this.run()
+      })
+      .catch(function (e) {
+        console.log(e)
+      })
     })
   }
 
   goto (url) {
-    return this.pipe(function () {
-      return this.chrome.Page.navigate({ url })
+    return this.pipe(async function () {
+      await this.chrome.Page.navigate({ url })
+      return this.chrome.Page.loadEventFired()
     })
   }
 
   waitfn (fn, ...args) {
-    var timeout = 10000
+    var timeout = this.options.waitTimeout
     var self = this
     return new Promise(async function (resolve) {
       const startTime = Date.now()
@@ -234,7 +251,7 @@ class Automator extends Flow {
     return this.pipe(async function () {
       debug('.type() %s into %s', text, selector)
       await this.waitSelector(selector)
-      await this.clickSelector(selector)
+      await this._clickSelector(selector)
       if ((text || '') === '') {
         await this.evaluate_now(async function (selector) {
           window.top.currentWindow.document.querySelector(selector).value = ''
@@ -254,7 +271,7 @@ class Automator extends Flow {
         string = selector
       } else if (selector != null) {
         await this.waitSelector(selector)
-        await this.clickSelector(selector)
+        await this._clickSelector(selector)
       }
 
       if (string == null) {
@@ -266,7 +283,7 @@ class Automator extends Flow {
     })
   }
 
-  async clickSelector (selector) {
+  async _clickSelector (selector) {
     let [ left, top ] = (await this.findPositionInWindow(selector)).split(',').map(i => parseInt(i, 10))
     debug(`left: ${left}, top: ${top}`)
     this._click(this.chrome, left, top)
@@ -385,22 +402,141 @@ class Automator extends Flow {
 
   url () {
     return this.pipe(async function () {
+      debug('.url()')
       return this.evaluate_now(async function () {
         return window.location.href
       })
     })
   }
 
+  click (selector) {
+    return this.pipe(async function () {
+      debug('.click() ' + selector)
+      await this.waitSelector(selector)
+      return this._clickSelector(selector)
+    })
+  }
+
   title () {
     return this.pipe(async function () {
+      debug('.title()')
       return this.evaluate_now(async function () {
         return window.top.currentWindow.document.title
       })
     })
   }
 
+  viewport (width, height, mobile = false) {
+    if (!width) {
+      throw new Error('viewport can`t be null')
+    }
+    debug('.viewport()', width, height)
+    this.options.windowSize = [ width, height ]
+    return this
+    // return this.pipe(async function () {
+      // debug('.viewport()', width, height)
+      // const deviceMetrics = {
+      //   width: ~~width,
+      //   height: ~~height || ~~width,
+      //   deviceScaleFactor: 0,
+      //   mobile,
+      //   fitWindow: false
+      // }
+
+      // await this.chrome.Emulation.setDeviceMetricsOverride(deviceMetrics)
+      // if (height === undefined) {
+      //   const {root: {nodeId: documentNodeId}} = await this.chrome.DOM.getDocument()
+      //   const {nodeId: bodyNodeId} = await this.chrome.DOM.querySelector({
+      //     selector: 'body',
+      //     nodeId: documentNodeId
+      //   })
+      //   width = 1800
+      //   height = (await this.chrome.DOM.getBoxModel({ nodeId: bodyNodeId })).model.height
+      // }
+      // await this.chrome.Emulation.setVisibleSize({ width: ~~width, height: ~~height })
+      // await this.chrome.Emulation.forceViewport({x: 0, y: 0, scale: 1})
+    // })
+  }
+
+  _writeFile (data, path, isBase64 = true) {
+    return new Promise((resolve, reject) => {
+      fs.writeFile(path, isBase64 ? Buffer.from(data, 'base64') : data, (err, ret) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve(ret)
+        }
+      })
+    })
+  }
+
+  useragent (userAgent) {
+    return this.pipe(async function () {
+      debug('.useragent()')
+      return this.chrome.Network.setUserAgentOverride({ userAgent })
+    })
+  }
+
+  html (path) {
+    return this.pipe(async function () {
+      debug('.html()')
+      const html = await this.evaluate_now(async function () {
+        return new window.XMLSerializer().serializeToString(document.doctype) + '\n' + document.documentElement.outerHTML
+      })
+      if (path) {
+        return this._writeFile(html, path, false)
+      } else {
+        return html
+      }
+    })
+  }
+
+  pdf (path, options = {}) {
+    return this.pipe(async function () {
+      debug('.pdf()')
+      const pdf = await this.chrome.Page.printToPDF(Object.assign({
+        landscape: true,
+        printBackground: false,
+        marginTop: 4,
+        marginBottom: 1,
+        marginLeft: 0,
+        marginRight: 0,
+        paperWidth: 8.2677165,  // A4 paper size
+        paperHeight: 11.6929134  // A4 paper size,
+      }, options))
+      return this._writeFile(pdf.data, path)
+    })
+  }
+
+  screenshot (path, clip) {
+    if (!path) {
+      throw new Error(`screenshot path can't be empty`)
+    }
+    return this.pipe(async function () {
+      let ext = extname(path)
+      debug('.screenshot()')
+      let image = await this.chrome.Page.captureScreenshot({
+        format: ext === '.jpg' ? 'jpeg' : 'png',
+        fromSurface: true,
+        clip: clip,
+        quality: 100
+      })
+      return this._writeFile(image.data, path)
+    })
+  }
+
+  path () {
+    return this.pipe(async function () {
+      debug('.path()')
+      return this.evaluate_now(function () {
+        return window.location.pathname
+      })
+    })
+  }
+
   end () {
     return this.pipe(async function (ret) {
+      debug('.path()')
       this.chrome.kill()
       return ret
     })
@@ -409,14 +545,6 @@ class Automator extends Flow {
   evaluate (fn, ...args) {
     return this.pipe(async function () {
       return this.evaluate_now(fn, ...args)
-    })
-  }
-
-  click (selector) {
-    return this.pipe(async function () {
-      debug('.click() ' + selector)
-      await this.waitSelector(selector)
-      return this.clickSelector(selector)
     })
   }
 
@@ -433,20 +561,6 @@ class Automator extends Flow {
 
   catch () {
     console.log('Please use try catch to catch error!!!')
-  }
-
-  pdf (fn) {
-    return this.pipe(function () {
-      console.log('WARN: Not implement yet')
-    })
-  }
-
-  path () {
-    return this.pipe(async function () {
-      return this.evaluate_now(function () {
-        return window.location.pathname
-      })
-    })
   }
 }
 

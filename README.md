@@ -32,18 +32,22 @@ Api与 [Nightmare](https://github.com/segmentio/nightmare) 保持高度兼容。
  - [x] end
  - [x] focusSelector
  - [x] blurSelector
- - [ ] pdf
- - [ ] screenshot
- - [ ] html
- - [ ] userAgent
+ - [x] pdf
+ - [x] screenshot
+ - [x] waitTimeout
+ - [x] viewport
+ - [x] useragent
+ - [x] html
+ - [ ] executionTimeout
+ - [ ] loadTimeout
  - [ ] authentication
  - [ ] halt
  - [ ] on
- - [ ] viewport
  - [ ] inject
  - [ ] header
  - [ ] cookies
 
+> PS：为了让代码更优雅，目前原有框架(Nightmare)回调写法全部去除，仅保留 Promise 写法。
 
 ## Examples:
 
