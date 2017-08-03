@@ -16,7 +16,7 @@ API与 [Nightmare](https://github.com/segmentio/nightmare) 保持高度兼容。
  - [x] goto
  - [x] url
  - [x] title
- - [x] action
+ - [x] action 只支持 Promise 和 async 方式的异步写法，不支持 callback 方式
  - [x] evaluate
  - [x] click
  - [x] type

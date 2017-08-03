@@ -65,6 +65,7 @@ class Automator extends Flow {
           break
         }
       }
+      await sleep(500)
       resolve()
     })
   }
