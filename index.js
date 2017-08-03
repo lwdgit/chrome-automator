@@ -12,7 +12,7 @@ class Automator extends Flow {
     let options = this.options = Object.assign({
       show: true,
       waitTimeout: 30000,
-      executionTimeout: 10000,
+      executionTimeout: 100000,
       loadTimeout: 10000,
       windowSize: [ 1920, 1600 ],
       port: 9222
@@ -20,6 +20,7 @@ class Automator extends Flow {
 
     let flags = {
       port: options.port,
+      chromePath: options.chromePath,
       chromeFlags: opts.chromeFlags || []
     }
 
@@ -43,8 +44,12 @@ class Automator extends Flow {
 
   goto (url) {
     return this.pipe(async function () {
-      await this.chrome.Page.navigate({ url })
-      return this.chrome.Page.loadEventFired()
+      await this.chrome.client.Page.navigate({ url })
+      if (this.options.loadTimeout) {
+        return Promise.race([ this.chrome.client.Page.loadEventFired(), sleep(this.options.loadTimeout) ])
+      } else {
+        return this.chrome.client.Page.loadEventFired()
+      }
     })
   }
 
@@ -111,14 +116,17 @@ class Automator extends Flow {
 
   evaluate_now (fn, ...args) { // eslint-disable-line
     // console.log(`Promise.resolve((${fn.toString()})(${args.map((arg) => JSON.stringify(jsesc(arg))).join()}))`)
-    return this.chrome.Runtime.evaluate({
+    let runner = this.chrome.client.Runtime.evaluate({
       expression: `
       window.top.currentWindow = (top.windowStacks || (top.windowStacks = [window]))[top.windowStacks.length - 1];
       window.top.iframeStacks = window.top.iframeStacks || []
       Promise.resolve((${fn.toString()})(${args.map((arg) => JSON.stringify(jsesc(arg))).join()}))`,
       awaitPromise: true
     })
-    .then(ret => ((ret || {}).result).value)
+    // if (this.options.executionTimeout) {
+    //   runner = Promise.race([ runner, sleep(this.options.executionTimeout) ])
+    // }
+    return runner.then(ret => ((ret || {}).result).value)
   }
 
   visible (selector) {
@@ -222,7 +230,7 @@ class Automator extends Flow {
   }
 
   async sendKey (char) {
-    await this.chrome.Input.dispatchKeyEvent({
+    await this.chrome.client.Input.dispatchKeyEvent({
       'modifiers': 0,
       'nativeVirtualKeyCode': 55,
       'text': '',
@@ -230,7 +238,7 @@ class Automator extends Flow {
       'unmodifiedText': '',
       'windowsVirtualKeyCode': 55
     })
-    await this.chrome.Input.dispatchKeyEvent({
+    await this.chrome.client.Input.dispatchKeyEvent({
       'modifiers': 0,
       'nativeVirtualKeyCode': 0,
       'text': char,
@@ -239,7 +247,7 @@ class Automator extends Flow {
       'isKeypad': true,
       'windowsVirtualKeyCode': 0
     })
-    await this.chrome.Input.dispatchKeyEvent({
+    await this.chrome.client.Input.dispatchKeyEvent({
       'modifiers': 0,
       'nativeVirtualKeyCode': 55,
       'text': '',
@@ -288,7 +296,7 @@ class Automator extends Flow {
   async _clickSelector (selector) {
     let [ left, top ] = (await this.findPositionInWindow(selector)).split(',').map(i => parseInt(i, 10))
     debug(`left: ${left}, top: ${top}`)
-    this._click(this.chrome, left, top)
+    this._click(this.chrome.client, left, top)
   }
 
   mousedown (selector) {
@@ -445,18 +453,18 @@ class Automator extends Flow {
       //   fitWindow: false
       // }
 
-      // await this.chrome.Emulation.setDeviceMetricsOverride(deviceMetrics)
+      // await this.chrome.client.Emulation.setDeviceMetricsOverride(deviceMetrics)
       // if (height === undefined) {
-      //   const {root: {nodeId: documentNodeId}} = await this.chrome.DOM.getDocument()
-      //   const {nodeId: bodyNodeId} = await this.chrome.DOM.querySelector({
+      //   const {root: {nodeId: documentNodeId}} = await this.chrome.client.DOM.getDocument()
+      //   const {nodeId: bodyNodeId} = await this.chrome.client.DOM.querySelector({
       //     selector: 'body',
       //     nodeId: documentNodeId
       //   })
       //   width = 1800
-      //   height = (await this.chrome.DOM.getBoxModel({ nodeId: bodyNodeId })).model.height
+      //   height = (await this.chrome.client.DOM.getBoxModel({ nodeId: bodyNodeId })).model.height
       // }
-      // await this.chrome.Emulation.setVisibleSize({ width: ~~width, height: ~~height })
-      // await this.chrome.Emulation.forceViewport({x: 0, y: 0, scale: 1})
+      // await this.chrome.client.Emulation.setVisibleSize({ width: ~~width, height: ~~height })
+      // await this.chrome.client.Emulation.forceViewport({x: 0, y: 0, scale: 1})
     // })
   }
 
@@ -475,7 +483,7 @@ class Automator extends Flow {
   useragent (userAgent) {
     return this.pipe(async function () {
       debug('.useragent()')
-      return this.chrome.Network.setUserAgentOverride({ userAgent })
+      return this.chrome.client.Network.setUserAgentOverride({ userAgent })
     })
   }
 
@@ -496,17 +504,24 @@ class Automator extends Flow {
   pdf (path, options = {}) {
     return this.pipe(async function () {
       debug('.pdf()')
-      const pdf = await this.chrome.Page.printToPDF(Object.assign({
-        landscape: true,
-        printBackground: false,
-        marginTop: 4,
-        marginBottom: 1,
-        marginLeft: 0,
-        marginRight: 0,
-        paperWidth: 8.2677165,  // A4 paper size
-        paperHeight: 11.6929134  // A4 paper size,
-      }, options))
-      return this._writeFile(pdf.data, path)
+      try {
+        /**
+         * https://github.com/cyrus-and/chrome-remote-interface/issues/202
+         */
+        const pdf = await this.chrome.client.Page.printToPDF(Object.assign({
+          landscape: true,
+          printBackground: false,
+          marginTop: 4,
+          marginBottom: 1,
+          marginLeft: 0,
+          marginRight: 0,
+          paperWidth: 8.2677165,  // A4 paper size
+          paperHeight: 11.6929134  // A4 paper size,
+        }, options))
+        return this._writeFile(pdf.data, path)
+      } catch (e) {
+        debug('pdf() only support in headless mode')
+      }
     })
   }
 
@@ -517,7 +532,7 @@ class Automator extends Flow {
     return this.pipe(async function () {
       let ext = extname(path)
       debug('.screenshot()')
-      let image = await this.chrome.Page.captureScreenshot({
+      let image = await this.chrome.client.Page.captureScreenshot({
         format: ext === '.jpg' ? 'jpeg' : 'png',
         fromSurface: true,
         clip: clip,
@@ -538,8 +553,8 @@ class Automator extends Flow {
 
   end () {
     return this.pipe(async function (ret) {
-      debug('.path()')
-      this.chrome.kill()
+      debug('.end()')
+      this.chrome.host.kill()
       return ret
     })
   }
@@ -551,21 +566,11 @@ class Automator extends Flow {
   }
 
   then (fn) {
-    return this.pipe(function () {
-      let result = fn.apply(this, arguments)
-      if (result != null && result.then && result instanceof Automator) {
-        return new Promise(resolve => result.then(resolve))
-      } else {
-        return result
-      }
+    return new Promise((resolve) => {
+      this.pipe(function () {
+        resolve(fn.apply(this, arguments))
+      })
     })
-    // let promise = new Promise((resolve) => {
-    //   this.pipe(function () {
-    //     resolve(fn.apply(this, arguments))
-    //   })
-    // })
-    // promise.__proto__ = this // eslint-disable-line
-    // return promise
   }
 
   catch () {
@@ -585,9 +590,9 @@ $.action = function (name, fn, ...args) {
   if (name in Automator) {
     throw new Error(`${name} has defined`)
   }
-  Automator.prototype[name] = function () {
+  Automator.prototype[name] = function (..._args) {
     return this.pipe(function () {
-      return fn.call(this, ...args)
+      return fn.apply(this, [...args, ..._args])
     })
   }
 }

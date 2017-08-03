@@ -1,6 +1,6 @@
 {
   "name": "chrome-automator",
-  "version": "0.0.1-pre2",
+  "version": "0.0.1-pre3",
   "description": "chrome-automator like Nightmare",
   "main": "index.js",
   "dependencies": {
@@ -17,6 +17,9 @@
   "scripts": {
     "precommit": "standard --fix && git add -A",
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines" : { 
+    "node" : ">=7.7.0" 
   },
   "repository": {
     "type": "git",

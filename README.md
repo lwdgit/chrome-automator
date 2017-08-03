@@ -2,11 +2,17 @@
 
 基于 chrome-remote-interface 的自动爬虫。
 
-Api与 [Nightmare](https://github.com/segmentio/nightmare) 保持高度兼容。
+API与 [Nightmare](https://github.com/segmentio/nightmare) 保持高度兼容。
 
 ## API兼容列表如下: （暂时不支持的正在加紧支持中）
 
- - [x] constructor 目前仅支持 port 与 show设置
+ - [x] constructor 支持如下参数
+  - [x] port
+  - [x] show
+  - [x] chromePath
+  - [x] waitTimeout
+  - [x] executionTimeout
+  - [x] loadTimeout
  - [x] goto
  - [x] url
  - [x] title
@@ -32,14 +38,11 @@ Api与 [Nightmare](https://github.com/segmentio/nightmare) 保持高度兼容。
  - [x] end
  - [x] focusSelector
  - [x] blurSelector
- - [x] pdf
+ - [x] pdf 仅支持headless模式，设置 show: false 开启
  - [x] screenshot
- - [x] waitTimeout
  - [x] viewport
  - [x] useragent
  - [x] html
- - [ ] executionTimeout
- - [ ] loadTimeout
  - [ ] authentication
  - [ ] halt
  - [ ] on
@@ -47,7 +50,13 @@ Api与 [Nightmare](https://github.com/segmentio/nightmare) 保持高度兼容。
  - [ ] header
  - [ ] cookies
 
-> PS：为了让代码更优雅，目前原有框架(Nightmare)回调写法全部去除，仅保留 Promise 写法。
+拓展功能及API:
+
+ - [x] iframe 进入iframe，方便iframe里面的操作
+ - [x] pipe 支持流程衔接，如登录流程
+ - [x] 支持新窗口打开时自动跟踪，防控制跳失
+
+> PS：目前原有框架(Nightmare)回调写法全部去除，仅保留 Promise 写法。
 
 ## Examples:
 
