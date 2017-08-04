@@ -1,6 +1,6 @@
 {
   "name": "chrome-automator",
-  "version": "0.0.1-pre3",
+  "version": "0.0.1-pre4",
   "description": "chrome-automator like Nightmare",
   "main": "index.js",
   "dependencies": {
@@ -25,8 +25,8 @@
     "type": "git",
     "url": "git+https://github.com/lwdgit/chrome-automator.git"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "lwdgit",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/lwdgit/chrome-automator/issues"
   },

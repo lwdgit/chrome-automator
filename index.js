@@ -46,9 +46,9 @@ class Automator extends Flow {
     return this.pipe(async function () {
       await this.chrome.client.Page.navigate({ url })
       if (this.options.loadTimeout) {
-        return Promise.race([ this.chrome.client.Page.loadEventFired(), sleep(this.options.loadTimeout) ])
+        return Promise.race([ this.chrome.client.Page.frameStoppedLoading(), sleep(this.options.loadTimeout) ])
       } else {
-        return this.chrome.client.Page.loadEventFired()
+        return this.chrome.client.Page.frameStoppedLoading()
       }
     })
   }
@@ -72,7 +72,7 @@ class Automator extends Flow {
 
   waitSelector (selector) {
     return this.waitfn(function (selector) {
-      return !!window.top.currentWindow.document.querySelector(selector)
+      return !!window.top._chromeCurrentWindow.document.querySelector(selector)
     }, selector)
   }
 
@@ -95,8 +95,8 @@ class Automator extends Flow {
     return this.pipe(function () {
       return this.evaluate_now(async function (selector) {
         try {
-          window.top.iframeStacks.push(window.top.currentWindow.document.querySelector(selector))
-          window.top.windowStacks.push(window.top.iframeStacks[window.top.iframeStacks.length - 1].contentWindow)
+          window.top._chromeIframeStacks.push(window.top._chromeCurrentWindow.document.querySelector(selector))
+          window.top._chromeWindowStacks.push(window.top._chromeIframeStacks[window.top._chromeIframeStacks.length - 1].contentWindow)
         } catch (e) {
           console.info('goto iframe error')
         }
@@ -107,9 +107,9 @@ class Automator extends Flow {
   parent () {
     return this.pipe(function () {
       return this.evaluate_now(async function (selector) {
-        if (window.top.windowStacks.length > 1) {
-          window.top.iframeStacks.pop()
-          window.top.windowStacks.pop()
+        if (window.top._chromeWindowStacks.length > 1) {
+          window.top._chromeIframeStacks.pop()
+          window.top._chromeWindowStacks.pop()
         }
       })
     })
@@ -119,14 +119,14 @@ class Automator extends Flow {
     // console.log(`Promise.resolve((${fn.toString()})(${args.map((arg) => JSON.stringify(jsesc(arg))).join()}))`)
     let runner = this.chrome.client.Runtime.evaluate({
       expression: `
-      window.top.currentWindow = (top.windowStacks || (top.windowStacks = [window]))[top.windowStacks.length - 1];
-      window.top.iframeStacks = window.top.iframeStacks || []
+      window.top._chromeCurrentWindow = (top._chromeWindowStacks || (top._chromeWindowStacks = [window]))[top._chromeWindowStacks.length - 1];
+      window.top._chromeIframeStacks = window.top._chromeIframeStacks || []
       Promise.resolve((${fn.toString()})(${args.map((arg) => JSON.stringify(jsesc(arg))).join()}))`,
       awaitPromise: true
     })
-    // if (this.options.executionTimeout) {
-    //   runner = Promise.race([ runner, sleep(this.options.executionTimeout) ])
-    // }
+    if (this.options.executionTimeout) {
+      runner = Promise.race([ runner, sleep(this.options.executionTimeout) ])
+    }
     return runner.then(ret => ((ret || {}).result).value)
   }
 
@@ -134,7 +134,7 @@ class Automator extends Flow {
     return this.pipe(async function (selector) {
       debug('.visible() for ' + selector)
       return this.evaluate_now(function (selector) {
-        var elem = window.top.currentWindow.document.querySelector(selector)
+        var elem = window.top._chromeCurrentWindow.document.querySelector(selector)
         if (elem) return (elem.offsetWidth > 0 && elem.offsetHeight > 0)
         else return false
       }, selector)
@@ -154,14 +154,14 @@ class Automator extends Flow {
     return this.pipe(async function () {
       debug('.exists() for ' + selector)
       return this.evaluate_now(function (selector) {
-        return (window.top.currentWindow.document.querySelector(selector) !== null)
+        return (window.top._chromeCurrentWindow.document.querySelector(selector) !== null)
       }, selector)
     })
   }
 
   focusSelector (selector) {
     return this.evaluate_now(function (selector) {
-      window.top.currentWindow.document.querySelector(selector).focus()
+      window.top._chromeCurrentWindow.document.querySelector(selector).focus()
     }, selector)
   }
 
@@ -169,7 +169,7 @@ class Automator extends Flow {
     return this.evaluate_now(function (selector) {
       // it is possible the element has been removed from the DOM
       // between the action and the call to blur the element
-      var element = window.top.currentWindow.document.querySelector(selector)
+      var element = window.top._chromeCurrentWindow.document.querySelector(selector)
       if (element) {
         element.blur()
       }
@@ -180,7 +180,7 @@ class Automator extends Flow {
     return (await this.evaluate_now(async function (obj, sleep) {
       if (typeof obj === 'string') {
         var expression = obj
-        obj = window.top.currentWindow.document.querySelector(expression)
+        obj = window.top._chromeCurrentWindow.document.querySelector(expression)
         if (!obj) {
           throw new Error('cannot find an object using expression ' + expression)
         }
@@ -189,7 +189,7 @@ class Automator extends Flow {
       let rect = obj.getBoundingClientRect()
       let offsetLeft = 0
       let offsetTop = 0
-      for (let w, i = 0; w = window.top.iframeStacks[i++];) { // eslint-disable-line
+      for (let w, i = 0; w = window.top._chromeIframeStacks[i++];) { // eslint-disable-line
         let r = w.getBoundingClientRect()
         offsetLeft += r.left
         offsetTop += r.top
@@ -265,11 +265,11 @@ class Automator extends Flow {
       await this._clickSelector(selector)
       if ((text || '') === '') {
         await this.evaluate_now(async function (selector) {
-          window.top.currentWindow.document.querySelector(selector).value = ''
+          window.top._chromeCurrentWindow.document.querySelector(selector).value = ''
         }, selector)
       } else {
         await this.evaluate_now(async function (selector, text) {
-          window.top.currentWindow.document.querySelector(selector).value = text
+          window.top._chromeCurrentWindow.document.querySelector(selector).value = text
         }, selector, text)
       }
       await this.blurSelector(selector)
@@ -304,11 +304,11 @@ class Automator extends Flow {
     return this.pipe(function () {
       debug('.mousedown() on ' + selector)
       return this.evaluate_now(async function (selector) {
-        var element = window.top.currentWindow.document.querySelector(selector)
+        var element = window.top._chromeCurrentWindow.document.querySelector(selector)
         if (!element) {
           throw new Error('Unable to find element by selector: ' + selector)
         }
-        var event = window.top.currentWindow.document.createEvent('MouseEvent')
+        var event = window.top._chromeCurrentWindow.document.createEvent('MouseEvent')
         event.initEvent('mousedown', true, true)
         element.dispatchEvent(event)
       }, selector)
@@ -319,11 +319,11 @@ class Automator extends Flow {
     return this.pipe(function () {
       debug('.mouseup() on ' + selector)
       return this.evaluate_now(async function (selector) {
-        var element = window.top.currentWindow.document.querySelector(selector)
+        var element = window.top._chromeCurrentWindow.document.querySelector(selector)
         if (!element) {
           throw new Error('Unable to find element by selector: ' + selector)
         }
-        var event = window.top.currentWindow.document.createEvent('MouseEvent')
+        var event = window.top._chromeCurrentWindow.document.createEvent('MouseEvent')
         event.initEvent('mouseup', true, true)
         element.dispatchEvent(event)
       }, selector)
@@ -334,11 +334,11 @@ class Automator extends Flow {
     return this.pipe(function () {
       debug('.mouseover() on ' + selector)
       return this.evaluate_now(async function (selector) {
-        var element = window.top.currentWindow.document.querySelector(selector)
+        var element = window.top._chromeCurrentWindow.document.querySelector(selector)
         if (!element) {
           throw new Error('Unable to find element by selector: ' + selector)
         }
-        var event = window.top.currentWindow.document.createEvent('MouseEvent')
+        var event = window.top._chromeCurrentWindow.document.createEvent('MouseEvent')
         event.initMouseEvent('mouseover', true, true)
         element.dispatchEvent(event)
       }, selector)
@@ -349,8 +349,8 @@ class Automator extends Flow {
     return this.pipe(function () {
       debug('.check() ' + selector)
       return this.evaluate_now(async function (selector) {
-        var element = window.top.currentWindow.document.querySelector(selector)
-        var event = window.top.currentWindow.document.createEvent('HTMLEvents')
+        var element = window.top._chromeCurrentWindow.document.querySelector(selector)
+        var event = window.top._chromeCurrentWindow.document.createEvent('HTMLEvents')
         element.checked = true
         event.initEvent('change', true, true)
         element.dispatchEvent(event)
@@ -362,8 +362,8 @@ class Automator extends Flow {
     return this.pipe(function () {
       debug('.uncheck() ' + selector)
       return this.evaluate_now(async function (selector) {
-        var element = window.top.currentWindow.document.querySelector(selector)
-        var event = window.top.currentWindow.document.createEvent('HTMLEvents')
+        var element = window.top._chromeCurrentWindow.document.querySelector(selector)
+        var event = window.top._chromeCurrentWindow.document.createEvent('HTMLEvents')
         element.checked = null
         event.initEvent('change', true, true)
         element.dispatchEvent(event)
@@ -375,8 +375,8 @@ class Automator extends Flow {
     return this.pipe(function () {
       debug('.select() ' + selector)
       return this.evaluate_now(async function (selector, option) {
-        var element = window.top.currentWindow.document.querySelector(selector)
-        var event = window.top.currentWindow.document.createEvent('HTMLEvents')
+        var element = window.top._chromeCurrentWindow.document.querySelector(selector)
+        var event = window.top._chromeCurrentWindow.document.createEvent('HTMLEvents')
         element.value = option
         event.initEvent('change', true, true)
         element.dispatchEvent(event)
@@ -388,7 +388,7 @@ class Automator extends Flow {
     return this.pipe(function () {
       debug('.back()')
       return this.evaluate_now(async function () {
-        window.top.currentWindow.history.back()
+        window.top._chromeCurrentWindow.history.back()
       })
     })
   }
@@ -397,7 +397,7 @@ class Automator extends Flow {
     return this.pipe(function () {
       debug('.forward()')
       return this.evaluate_now(async function () {
-        window.top.currentWindow.history.forward()
+        window.top._chromeCurrentWindow.history.forward()
       })
     })
   }
@@ -406,7 +406,7 @@ class Automator extends Flow {
     return this.pipe(function () {
       debug('.refresh()')
       return this.evaluate_now(async function () {
-        window.top.currentWindow.location.reload()
+        window.top._chromeCurrentWindow.location.reload()
       })
     })
   }
@@ -432,7 +432,7 @@ class Automator extends Flow {
     return this.pipe(async function () {
       debug('.title()')
       return this.evaluate_now(async function () {
-        return window.top.currentWindow.document.title
+        return window.top._chromeCurrentWindow.document.title
       })
     })
   }
@@ -566,11 +566,115 @@ class Automator extends Flow {
     })
   }
 
+  _inject (type, content) {
+    console.log(type, content)
+    if (type === 'js') {
+      this.evaluate_now(async function (content) {
+        return eval(content) // eslint-disable-line
+      }, content)
+    } else {
+      this.evaluate_now(function (content) {
+        console.log(content)
+        document.body.appendChild(document.createElement('style')).innerHTML = content
+      }, content)
+    }
+  }
+
+  inject (type, file) {
+    return this.pipe(async function () {
+      debug('.inject()-ing a file')
+      if (type === 'js' || type === 'css') {
+        this._inject(type, fs.readFileSync(file, { encoding: 'utf-8' }))
+      } else {
+        debug('unsupported file type in .inject()')
+      }
+    })
+  }
+
+  setCookie (key, value) {
+    return this.pipe(async function () {
+      debug('.setCookie()')
+      /**
+       * https://chromedevtools.github.io/devtools-protocol/tot/Network/#method-setCookie
+       */
+      if (typeof key === 'string') {
+        key = {
+          name: key,
+          value: value
+        }
+      }
+      return this.chrome.client.Network.setCookie(key)
+    })
+  }
+
+  getCookie (key) {
+    return this.pipe(async function () {
+      debug('.getCookie()')
+      const allCookie = this.chrome.client.Network.getAllCookies()
+      if (key == null || key === '') {
+        return allCookie
+      } else {
+        return (new RegExp(key + '=([^&]+)')).test(allCookie) ? RegExp.$1 : null
+      }
+    })
+  }
+
+  clearCookie (key) {
+    return this.pipe(async function () {
+      debug('.clearCookie()')
+      if (key == null || key === '') {
+        if (this.chrome.client.Network.canClearBrowserCookies()) {
+          return this.chrome.client.Network.clearBrowserCookies()
+        } else {
+          return false
+        }
+      } else {
+        return this.chrome.client.Network.deleteCookie({ cookieName: key })
+      }
+    })
+  }
+
+  setExtraHTTPHeaders (params) {
+    return this.pipe(async function () {
+      debug('.setExtraHTTPHeaders()')
+      return this.chrome.client.Network.setExtraHTTPHeaders(params)
+    })
+  }
+
+  ignoreSWCache (trueOrFalse = true) {
+    return this.pipe(function () {
+      debug('.ignoreSWCache()')
+      return this.chrome.client.Network.setBypassServiceWorker({
+        bypass: trueOrFalse
+      })
+    })
+  }
+
+  authentication (username, password) {
+    return this.pipe(async function () {
+      debug('.authentication()')
+      /**
+       * https://chromedevtools.github.io/devtools-protocol/tot/Network/#type-AuthChallengeResponse
+       */
+      return this.chrome.client.Network.AuthChallengeResponse({
+        username,
+        password
+      })
+    })
+  }
+
   then (fn) {
     return new Promise((resolve) => {
       this.pipe(function () {
         resolve(fn.apply(this, arguments))
       })
+    })
+  }
+
+  halt () {
+    return this.pipe(function () {
+      this.tasks.splice(0, this.tasks.length)
+      return this.chrome.host.kill()
     })
   }
 
