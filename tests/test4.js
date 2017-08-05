@@ -16,7 +16,7 @@ try {
     return {
       canceled: true
     }
-  })
+  }, { detach: false })
   .url()
   .pipe((url) => console.log(url))
   .end()

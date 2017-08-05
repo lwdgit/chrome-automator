@@ -54,7 +54,10 @@ API与 [Nightmare](https://github.com/segmentio/nightmare) 保持高度兼容。
  - [x] on 暂时支持的事件与Nightmare不同
  <details>
  <summary>列表如下: 详细说明见 https://chromedevtools.github.io/devtools-protocol/tot/Network/#event-loadingFailed </summary>
-    
+  - [x] Page.javascriptDialogOpening // 弹窗事件
+  - [x] Console.messageAdded  // 老console事件，不建议使用
+  - [x] Runtime.consoleAPICalled // console事件
+  
   - [x] Network.resourceChangedPriority
   - [x] Network.requestWillBeSent
   - [x] Network.requestServedFromCache
@@ -72,8 +75,29 @@ API与 [Nightmare](https://github.com/segmentio/nightmare) 保持高度兼容。
   - [x] Network.eventSourceMessageReceived
   - [x] Network.requestIntercepted
 
- > 如想取消监听，可以 `return { cancled: true }` 继续接下来的流程。例子见 [test4](./tests/test4.js)
+  - [x] Page.domContentEventFired
+  - [x] Page.loadEventFired
+  - [x] Page.frameAttached
+  - [x] Page.frameNavigated
+  - [x] Page.frameDetached
+  - [x] Page.frameStartedLoading
+  - [x] Page.frameStoppedLoading
+  - [x] Page.frameScheduledNavigation
+  - [x] Page.frameClearedScheduledNavigation
+  - [x] Page.frameResized
+  - [x] Page.javascriptDialogClosed
+  - [x] Page.screencastFrame
+  - [x] Page.screencastVisibilityChanged
+  - [x] Page.interstitialShown
+  - [x] Page.interstitialHidden
+
  </details>
+
+ > 两种模式: 
+  * 非阻塞式 默认方式，建议在 goto 之前使用
+  * 阻塞式，使用方式 on(eventName, fn, { detach: false }) 如想取消监听，可以 `return { cancled: true }` 继续接下来的流程。
+  例子见 [test4](./tests/test4.js)，[test5](./tests/test4.js)
+
  
  - once 只监听一次，监听完成后可以继续后续的动作
 

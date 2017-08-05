@@ -652,13 +652,13 @@ class Automator extends Flow {
     })
   }
 
-  on (type, fn) {
-    return this.pipe(async function () {
+  on (type, fn, { detach = true } = {}) {
+    return this.pipe(function () {
       let self = this
-      return new Promise((resolve, reject) => {
+      let promise = new Promise((resolve, reject) => {
         let nfn = async function () {
           try {
-            let result = (await fn()) || {}
+            let result = (await fn.apply(self, arguments)) || {}
             if (result.canceled === true) {
               self.chrome.client.removeListener(type, nfn)
               resolve(result)
@@ -669,6 +669,9 @@ class Automator extends Flow {
         }
         this.chrome.client.on(type, nfn)
       })
+      if (!detach) {
+        return promise
+      }
     })
   }
 
@@ -680,10 +683,11 @@ class Automator extends Flow {
 
   once (type, fn) {
     return this.pipe(async function () {
+      let self = this
       return new Promise((resolve, reject) => {
         this.chrome.client.once(type, async function () {
           try {
-            resolve(await fn())
+            resolve(await fn.apply(self, arguments))
           } catch (e) {
             reject(e)
           }

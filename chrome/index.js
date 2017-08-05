@@ -15,6 +15,8 @@ module.exports = function (opts) {
       chrome.client.kill = launch.close
       chrome.client.Network.enable()
       chrome.client.Page.enable()
+      chrome.client.Console.enable()
+      chrome.client.Runtime.enable()
 
       /**
        * Auto attach to new window when pop up
