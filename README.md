@@ -87,7 +87,7 @@ API与 [Nightmare](https://github.com/segmentio/nightmare) 保持高度兼容。
  - [x] pipe 支持流程衔接，如登录流程，和 then 一样，pipe 也可以接收上个流程的返回值，建议在中间流程使用 pipe 替代 then
  - [x] 支持新窗口打开时自动跟踪，防控制跳失 注: headless模式下存在bug
  - [x] setExtraHTTPHeaders
- - [x] ignoreSWCache 忽略servie worker缓存
+ - [x] ignoreSWCache 忽略service worker缓存
 
 > PS：目前原有框架(Nightmare)回调写法全部去除，仅保留 Promise 写法。
 
