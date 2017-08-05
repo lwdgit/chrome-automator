@@ -54,9 +54,10 @@ API与 [Nightmare](https://github.com/segmentio/nightmare) 保持高度兼容。
  - [x] on 暂时支持的事件与Nightmare不同
  <details>
  <summary>列表如下: 详细说明见 https://chromedevtools.github.io/devtools-protocol/tot/Network/#event-loadingFailed </summary>
-  - [x] Page.javascriptDialogOpening // 弹窗事件
-  - [x] Console.messageAdded  // 老console事件，不建议使用
-  - [x] Runtime.consoleAPICalled // console事件
+ 
+  - [x] Page.javascriptDialogOpening  弹窗事件
+  - [x] Console.messageAdded  旧console事件，不建议使用
+  - [x] Runtime.consoleAPICalled  console事件
   
   - [x] Network.resourceChangedPriority
   - [x] Network.requestWillBeSent
