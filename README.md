@@ -131,7 +131,7 @@ chrome({ show: false })
 .insert('input#kw', 'hello world\r')
 .wait('.c-container a')
 .evaluate(() => document.querySelector('.c-container a').href)
-.then(function (url) {
+.pipe(function (url) {
   console.log(url)
   return chrome().goto(url)
 })
