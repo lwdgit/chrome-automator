@@ -93,7 +93,7 @@ API与 [Nightmare](https://github.com/segmentio/nightmare) 保持高度兼容。
 
 > Tips: 执行过程中手动进行某些操作（如打开开发者工具）可能会使用动作失效。
 > 因为 Promise 无法取消的原因，所以在流程执行完 end 操作后node可能并不会立即退出，一般会在 30s 左右自动退出，可以缩短 loadTimeout 和 executionTimeout 解决
-> Promise 异步流程目前在node下还无法显示完整的错误堆栈信息，可以考虑使用 node --trace-warings 查看，也可以使用 `global.Promise = require('bluebird')`解决，使用过程中记得使用 try catch 包裹执行段
+> Promise 异步流程目前在node下还无法显示完整的错误堆栈信息，可以考虑使用 `node --trace-warnings` 查看，也可以使用 `global.Promise = require('bluebird')`解决，使用过程中记得使用 try catch 包裹执行段
 
 ## Examples:
 
