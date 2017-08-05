@@ -52,26 +52,28 @@ API与 [Nightmare](https://github.com/segmentio/nightmare) 保持高度兼容。
  
  - [x] inject
  - [x] on 暂时支持的事件与Nightmare不同
-    列表如下: 详细说明见 https://chromedevtools.github.io/devtools-protocol/tot/Network/#event-loadingFailed
-    - [x] Network.resourceChangedPriority
-    - [x] Network.requestWillBeSent
-    - [x] Network.requestServedFromCache
-    - [x] Network.responseReceived
-    - [x] Network.dataReceived
-    - [x] Network.loadingFinished
-    - [x] Network.loadingFailed
-    - [x] Network.webSocketWillSendHandshakeRequest
-    - [x] Network.webSocketHandshakeResponseReceived
-    - [x] Network.webSocketCreated
-    - [x] Network.webSocketClosed
-    - [x] Network.webSocketFrameReceived
-    - [x] Network.webSocketFrameError
-    - [x] Network.webSocketFrameSent
-    - [x] Network.eventSourceMessageReceived
-    - [x] Network.requestIntercepted
-   
-   > 如想取消监听，可以 `return { cancled: true }` 继续接下来的流程。例子见 [test4](./tests/test4.js)
-  
+ <details>
+ <summary>列表如下: 详细说明见 https://chromedevtools.github.io/devtools-protocol/tot/Network/#event-loadingFailed </summary>
+    
+  - [x] Network.resourceChangedPriority
+  - [x] Network.requestWillBeSent
+  - [x] Network.requestServedFromCache
+  - [x] Network.responseReceived
+  - [x] Network.dataReceived
+  - [x] Network.loadingFinished
+  - [x] Network.loadingFailed
+  - [x] Network.webSocketWillSendHandshakeRequest
+  - [x] Network.webSocketHandshakeResponseReceived
+  - [x] Network.webSocketCreated
+  - [x] Network.webSocketClosed
+  - [x] Network.webSocketFrameReceived
+  - [x] Network.webSocketFrameError
+  - [x] Network.webSocketFrameSent
+  - [x] Network.eventSourceMessageReceived
+  - [x] Network.requestIntercepted
+
+ > 如想取消监听，可以 `return { cancled: true }` 继续接下来的流程。例子见 [test4](./tests/test4.js)
+ </details>
  
  - once 只监听一次，监听完成后可以继续后续的动作
 
