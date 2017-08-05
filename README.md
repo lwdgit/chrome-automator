@@ -96,7 +96,7 @@ API与 [Nightmare](https://github.com/segmentio/nightmare) 保持高度兼容。
 
  > 两种模式: 
   * 非阻塞式 默认方式，建议在 goto 之前使用
-  * 阻塞式，使用方式 on(eventName, fn, { detach: false }) 如想取消监听，可以 `return { cancled: true }` 继续接下来的流程。
+  * 阻塞式，使用方式 `on(eventName, fn, { detach: false })`。 如想取消监听，可以 `return { cancled: true }` 继续接下来的流程。
   例子见 [test4](./tests/test4.js)，[test5](./tests/test4.js)
 
  
@@ -106,7 +106,7 @@ API与 [Nightmare](https://github.com/segmentio/nightmare) 保持高度兼容。
  - [ ] header 目前可以使用setExtraHTTPHeaders代替部分功能
  
 
-拓展功能及API:
+### 拓展功能及API:
 
  - [x] iframe 进入iframe，方便iframe里面的操作
  - [x] pipe 支持流程衔接，如登录流程，和 then 一样，pipe 也可以接收上个流程的返回值，建议在中间流程使用 pipe 替代 then
