@@ -99,7 +99,7 @@ API与 [Nightmare](https://github.com/segmentio/nightmare) 保持高度兼容。
   例子见 [test4](./tests/test4.js)，[test5](./tests/test4.js)
 
  
- - once 只监听一次，监听完成后可以继续后续的动作
+ - [x] once 只监听事件一次，监听完成后可以继续后续的动作
 
  - [ ] halt 暂时不支持，chrome在此场景不太适用 https://github.com/segmentio/nightmare/issues/835
  - [ ] header 目前可以使用setExtraHTTPHeaders代替部分功能
