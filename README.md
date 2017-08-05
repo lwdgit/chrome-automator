@@ -4,7 +4,7 @@
 
 API与 [Nightmare](https://github.com/segmentio/nightmare) 保持高度兼容。
 
-## API兼容列表如下: （暂时不支持的正在加紧支持中）
+## API兼容列表如下:
 
  - [x] constructor 支持如下参数
     - [x] port
