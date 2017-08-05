@@ -12,7 +12,7 @@ class Automator extends Flow {
     let options = this.options = Object.assign({
       show: true,
       waitTimeout: 30000,
-      executionTimeout: 100000,
+      executionTimeout: 30000,
       loadTimeout: 10000,
       windowSize: [ 1920, 1600 ],
       port: 9222
@@ -40,13 +40,81 @@ class Automator extends Flow {
     .catch(function (e) {
       console.log(e)
     })
+
+    const self = this
+
+    this.cookies = {
+      set (key, value) {
+        return self.pipe(async function () {
+          debug('.setCookie()')
+          /**
+           * https://chromedevtools.github.io/devtools-protocol/tot/Network/#method-setCookie
+           */
+          if (typeof key === 'string') {
+            key = {
+              name: key,
+              value: value,
+              path: '/'
+            }
+          }
+          /**
+           * 此方法成功率不高(50%)左右，故采用自行设置的方式
+           * return self.chrome.client.Network.setCookie(Object.assign({ url }, key))
+           */
+          let cookies = [`${key.name}=${key.value}`]
+          delete key.name
+          delete key.value
+          for (let k in key) {
+            cookies.push(`${k}=${key[k]}`)
+          }
+          return this.evaluate_now(`document.cookie='${cookies.join('; ')}'`)
+        })
+      },
+      get (key) {
+        return self.pipe(async function () {
+          debug('.getCookie()')
+          const allCookie = (await self.chrome.client.Network.getAllCookies()).cookies
+          if (key == null || key === '') {
+            return allCookie
+          } else {
+            return (allCookie.filter((cookie) => cookie.name === key)[0] || {}).value
+          }
+        })
+      },
+      clear (keys) {
+        return self.pipe(async function () {
+          debug('.clearCookie()')
+          if (keys == null || keys === '') {
+            if (self.chrome.client.Network.canClearBrowserCookies()) {
+              return self.chrome.client.Network.clearBrowserCookies()
+            } else {
+              return false
+            }
+          } else {
+            if (typeof keys === 'string') {
+              keys = [ keys ]
+            }
+            if (Array.isArray(keys)) {
+              let url = await self.evaluate_now(() => window.location.href)
+              return Promise.all(
+                keys.map(
+                  (key) => self.chrome.client.Network.deleteCookie({ cookieName: key, url })
+                )
+              )
+            } else {
+              return false
+            }
+          }
+        })
+      }
+    }
   }
 
-  goto (url) {
+  goto (url, { loadTimeout = this.options.loadTimeout } = {}) {
     return this.pipe(async function () {
       await this.chrome.client.Page.navigate({ url })
-      if (this.options.loadTimeout) {
-        return Promise.race([ this.chrome.client.Page.frameStoppedLoading(), sleep(this.options.loadTimeout) ])
+      if (loadTimeout) {
+        return Promise.race([ this.chrome.client.Page.frameStoppedLoading(), sleep(loadTimeout) ])
       } else {
         return this.chrome.client.Page.frameStoppedLoading()
       }
@@ -567,70 +635,60 @@ class Automator extends Flow {
   }
 
   _inject (type, content) {
-    console.log(type, content)
-    if (type === 'js') {
-      this.evaluate_now(async function (content) {
-        return eval(content) // eslint-disable-line
-      }, content)
-    } else {
-      this.evaluate_now(function (content) {
-        console.log(content)
-        document.body.appendChild(document.createElement('style')).innerHTML = content
-      }, content)
+    if (type === 'css') {
+      content = 'document.body.appendChild(document.createElement("style")).innerHTML = `' + content + '`'
     }
+    return this.evaluate_now(content)
   }
 
   inject (type, file) {
     return this.pipe(async function () {
       debug('.inject()-ing a file')
       if (type === 'js' || type === 'css') {
-        this._inject(type, fs.readFileSync(file, { encoding: 'utf-8' }))
+        return this._inject(type, fs.readFileSync(file, { encoding: 'utf-8' }))
       } else {
         debug('unsupported file type in .inject()')
       }
     })
   }
 
-  setCookie (key, value) {
+  on (type, fn) {
     return this.pipe(async function () {
-      debug('.setCookie()')
-      /**
-       * https://chromedevtools.github.io/devtools-protocol/tot/Network/#method-setCookie
-       */
-      if (typeof key === 'string') {
-        key = {
-          name: key,
-          value: value
+      let self = this
+      return new Promise((resolve, reject) => {
+        let nfn = async function () {
+          try {
+            let result = (await fn()) || {}
+            if (result.canceled === true) {
+              self.chrome.client.removeListener(type, nfn)
+              resolve(result)
+            }
+          } catch (e) {
+            return reject(e)
+          }
         }
-      }
-      return this.chrome.client.Network.setCookie(key)
+        this.chrome.client.on(type, nfn)
+      })
     })
   }
 
-  getCookie (key) {
+  off (type, fn) {
     return this.pipe(async function () {
-      debug('.getCookie()')
-      const allCookie = this.chrome.client.Network.getAllCookies()
-      if (key == null || key === '') {
-        return allCookie
-      } else {
-        return (new RegExp(key + '=([^&]+)')).test(allCookie) ? RegExp.$1 : null
-      }
+      return this.chrome.client.removeListener(type, fn)
     })
   }
 
-  clearCookie (key) {
+  once (type, fn) {
     return this.pipe(async function () {
-      debug('.clearCookie()')
-      if (key == null || key === '') {
-        if (this.chrome.client.Network.canClearBrowserCookies()) {
-          return this.chrome.client.Network.clearBrowserCookies()
-        } else {
-          return false
-        }
-      } else {
-        return this.chrome.client.Network.deleteCookie({ cookieName: key })
-      }
+      return new Promise((resolve, reject) => {
+        this.chrome.client.once(type, async function () {
+          try {
+            resolve(await fn())
+          } catch (e) {
+            reject(e)
+          }
+        })
+      })
     })
   }
 

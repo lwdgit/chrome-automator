@@ -13,7 +13,6 @@ module.exports = function (opts) {
         port: (await launch.launch(opts)).port
       })
       chrome.client.kill = launch.close
-      chrome.client.ServiceWorker.disable()
       chrome.client.Network.enable()
       chrome.client.Page.enable()
 
