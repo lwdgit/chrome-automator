@@ -1,13 +1,16 @@
 {
   "name": "chrome-automator",
-  "version": "0.1.1",
+  "version": "0.1.4",
   "description": "chrome-automator similar to NightmareJS",
   "main": "index.js",
   "dependencies": {
     "chrome-remote-interface": "^0.24.2",
     "debug": "^2.6.8",
     "jsesc": "^2.5.1",
-    "myflow": "^0.1.1"
+    "lighthouse-logger": "^1.0.1",
+    "mkdirp": "^0.5.1",
+    "myflow": "^0.1.1",
+    "rimraf": "^2.6.1"
   },
   "devDependencies": {
     "husky": "^0.14.3",
@@ -18,7 +21,9 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "standard": {
-    "ignore": ["/chrome/chrome-launcher/*.js"]
+    "ignore": [
+      "/chrome/chrome-launcher/*.js"
+    ]
   },
   "engines": {
     "node": ">=7.7.0"
