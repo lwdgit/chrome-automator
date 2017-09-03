@@ -1,4 +1,4 @@
-const { launch } = require('lighthouse/chrome-launcher')
+const { launch } = require('./chrome-launcher')
 let launcher
 
 exports.launch = async function (opts = {}) {

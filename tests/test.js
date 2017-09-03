@@ -1,14 +1,20 @@
 const chrome = require('..')
 
-chrome.action('log', function (msg) {
-  console.log(msg)
+chrome.action('log', function (msg, pipe) {
+  const args = [msg]
+  if (pipe) {
+    args.push(pipe)
+  }
+  console.log.apply(console, args)
 })
 try {
-  chrome({ show: false })
+  chrome({ show: true })
   .viewport(1900, 1000)
   .useragent('Mozilla/5.0 Chrome/59.0.3071.115 Mobile Safari/537.36')
   .goto('https://www.baidu.com/')
   .wait('body')
+  .url()
+  .log('url:')
   .log('start get html')
   .html('fixtures/1.html')
   .insert('input#kw', 'hello world\r')

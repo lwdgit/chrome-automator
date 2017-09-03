@@ -758,8 +758,8 @@ $.action = function (name, fn, ...args) {
     throw new Error(`${name} has defined`)
   }
   Automator.prototype[name] = function (..._args) {
-    return this.pipe(function () {
-      return fn.apply(this, [...args, ..._args])
+    return this.pipe(function (...__args) {
+      return fn.apply(this, [...args, ..._args, ...__args])
     })
   }
 }

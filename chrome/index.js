@@ -13,10 +13,12 @@ module.exports = function (opts) {
         port: (await launch.launch(opts)).port
       })
       chrome.client.kill = launch.close
-      chrome.client.Network.enable()
-      chrome.client.Page.enable()
-      chrome.client.Console.enable()
-      chrome.client.Runtime.enable()
+      await Promise.all([
+        chrome.client.Network.enable(),
+        chrome.client.Page.enable(),
+        chrome.client.Console.enable(),
+        chrome.client.Runtime.enable()
+      ])
 
       /**
        * Auto attach to new window when pop up
