@@ -4,7 +4,8 @@ const jsesc = require('jsesc')
 const { Flow } = require('myflow')
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 const fs = require('fs')
-const { extname } = require('path')
+const { extname, dirname } = require('path')
+const mkdirp = require('mkdirp')
 
 class Automator extends Flow {
   constructor (opts = {}) {
@@ -212,9 +213,9 @@ class Automator extends Flow {
   scrollTo (x, y) {
     return this.pipe(async function () {
       debug('.scrollTo()')
-      return this.evaluate_now(function (y, x) {
-        window.scrollTo(x, y)
-      })
+      return this.evaluate_now(function (x, y) {
+        window.top._chromeCurrentWindow.scrollTo(x, y)
+      }, x, y)
     })
   }
 
@@ -539,6 +540,7 @@ class Automator extends Flow {
 
   _writeFile (data, path, isBase64 = true) {
     return new Promise((resolve, reject) => {
+      mkdirp.sync(dirname(path))
       fs.writeFile(path, isBase64 ? Buffer.from(data, 'base64') : data, (err, ret) => {
         if (err) {
           reject(err)
@@ -763,5 +765,7 @@ $.action = function (name, fn, ...args) {
     })
   }
 }
+
+$.Automator = Automator
 
 module.exports = $

@@ -110,7 +110,6 @@ export function linux() {
   const executables = [
     'google-chrome-stable',
     'google-chrome',
-    'chromium-browser'
   ];
   executables.forEach((executable: string) => {
     try {

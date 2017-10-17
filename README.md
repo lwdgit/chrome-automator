@@ -1,27 +1,27 @@
 # chrome-automator
 
-基于 chrome-remote-interface 的自动爬虫。
+基于 chrome-remote-interface 的自动化工具。
 
 API与 [Nightmare](https://github.com/segmentio/nightmare) 保持高度兼容。
 
-## Examples: (测试前请确保chrome版本大于60(chromium >= 54))
+## Examples: (测试前请确保chrome版本大于60)
 
 ```javascript
-const chrome = require('chrome-automator')
-
-chrome({ show: true })
-.goto('https://www.baidu.com/')
-.wait('body')
-.insert('input#kw', 'hello world\r')
-.wait('.c-container a')
-.evaluate(() => document.querySelector('.c-container a').href)
-.pipe(function (url) {
-  console.log(url)
-  return chrome().goto(url)
-})
-.wait('[id^="highlighter_"]')
-.evaluate(() => document.querySelectorAll('.para-title.level-3')[9].nextElementSibling.querySelector('.code').textContent)
-.then((code) => console.log(code))
+  chrome({ show: true })
+  .viewport(1900, 1000)
+  .useragent('Mozilla/5.0 Chrome/59.0.3071.115 Mobile Safari/537.36')
+  .goto('https://www.baidu.com/')
+  .wait('body')
+  .insert('input#kw', 'hello world\r')
+  .wait('.c-container a')
+  .click('.c-container a')
+  .wait('[id^="highlighter_"]')
+  .screenshot('1.png')
+  .evaluate(() => document.querySelectorAll('.para-title.level-3')[9].nextElementSibling.querySelector('.code').textContent)
+  .pipe((code) => console.log(code))
+  .url()
+  .end()
+  .then((url) => console.log(url))
 ```
 
 ```javascript
@@ -50,6 +50,20 @@ try {
 }
 
 ```
+
+## 命令行模式 (version >= 0.2.0)
+
+```
+> chrome-automator
+.chrome() // 启动chrome
+.goto('https://baidu.com')
+.goto{ frameId: '64607.1' }
+.insert('#kw', 'hello world\r')
+.screenshot('1.jpg')
+.title()
+.end() // 关闭chrome
+```
+输出: hello world_百度搜索
 
 ## API兼容列表如下:
 
@@ -166,6 +180,7 @@ try {
 > Tips: 执行过程中手动进行某些操作（如打开开发者工具）可能会使用动作失效。
 > 因为 Promise 无法取消的原因，所以在流程执行完 end 操作后node可能并不会立即退出，一般会在 30s 左右自动退出，可以缩短 loadTimeout 和 executionTimeout 解决
 > Promise 异步流程目前在node下还无法显示完整的错误堆栈信息，可以考虑使用 `node --trace-warnings` 查看，也可以使用 `global.Promise = require('bluebird')`解决，使用过程中记得使用 try catch 包裹执行段
+
 
 ## LICENSE
 
