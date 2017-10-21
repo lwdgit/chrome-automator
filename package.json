@@ -1,6 +1,6 @@
 {
   "name": "chrome-automator",
-  "version": "0.2.3",
+  "version": "0.2.5",
   "description": "chrome-automator similar to NightmareJS",
   "main": "index.js",
   "dependencies": {

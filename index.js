@@ -122,6 +122,32 @@ class Automator extends Flow {
     })
   }
 
+  viewport (viewportWidth = 1920, viewportHeight, mobile = false) {
+    return this.pipe(async function () {
+      const { DOM, Emulation } = this.chrome.client
+      const deviceMetrics = {
+        width: viewportWidth,
+        height: viewportHeight || viewportWidth,
+        deviceScaleFactor: 1,
+        mobile,
+        fitWindow: false
+      }
+
+      await Emulation.setDeviceMetricsOverride(deviceMetrics)
+      if (!viewportHeight) {
+        const { root: { nodeId: documentNodeId } } = await DOM.getDocument()
+        const { nodeId: bodyNodeId } = await DOM.querySelector({
+          selector: 'body',
+          nodeId: documentNodeId
+        })
+        const {model} = await DOM.getBoxModel({nodeId: bodyNodeId})
+        viewportHeight = model.height
+      }
+      deviceMetrics.height = viewportHeight
+      return Emulation.setDeviceMetricsOverride(deviceMetrics)
+    })
+  }
+
   waitfn (fn, ...args) {
     var timeout = this.options.waitTimeout
     var self = this
@@ -506,38 +532,6 @@ class Automator extends Flow {
     })
   }
 
-  viewport (width, height, mobile = false) {
-    if (!width) {
-      throw new Error('viewport can`t be null')
-    }
-    debug('.viewport()', width, height)
-    this.options.windowSize = [ width, height ]
-    return this
-    // return this.pipe(async function () {
-      // debug('.viewport()', width, height)
-      // const deviceMetrics = {
-      //   width: ~~width,
-      //   height: ~~height || ~~width,
-      //   deviceScaleFactor: 0,
-      //   mobile,
-      //   fitWindow: false
-      // }
-
-      // await this.chrome.client.Emulation.setDeviceMetricsOverride(deviceMetrics)
-      // if (height === undefined) {
-      //   const {root: {nodeId: documentNodeId}} = await this.chrome.client.DOM.getDocument()
-      //   const {nodeId: bodyNodeId} = await this.chrome.client.DOM.querySelector({
-      //     selector: 'body',
-      //     nodeId: documentNodeId
-      //   })
-      //   width = 1800
-      //   height = (await this.chrome.client.DOM.getBoxModel({ nodeId: bodyNodeId })).model.height
-      // }
-      // await this.chrome.client.Emulation.setVisibleSize({ width: ~~width, height: ~~height })
-      // await this.chrome.client.Emulation.forceViewport({x: 0, y: 0, scale: 1})
-    // })
-  }
-
   _writeFile (data, path, isBase64 = true) {
     return new Promise((resolve, reject) => {
       mkdirp.sync(dirname(path))
@@ -597,11 +591,8 @@ class Automator extends Flow {
   }
 
   screenshot (path, clip) {
-    if (!path) {
-      throw new Error(`screenshot path can't be empty`)
-    }
     return this.pipe(async function () {
-      let ext = extname(path)
+      let ext = path == null ? 'jpg' : extname(path)
       debug('.screenshot()')
       let image = await this.chrome.client.Page.captureScreenshot({
         format: ext === '.jpg' ? 'jpeg' : 'png',
@@ -609,7 +600,7 @@ class Automator extends Flow {
         clip: clip,
         quality: 100
       })
-      return this._writeFile(image.data, path)
+      return path == null ? image.data : this._writeFile(image.data, path)
     })
   }
 
