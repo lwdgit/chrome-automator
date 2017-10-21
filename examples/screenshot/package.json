@@ -1,0 +1,17 @@
+{
+  "name": "screenshot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./index.js",
+  "scripts": {
+    "cli": "chrome-automator",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "koa": "^2.3.0",
+    "pm2": "*",
+    "chrome-automator": "^0.2.3"
+  }
+}

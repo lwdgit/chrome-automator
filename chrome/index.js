@@ -12,7 +12,11 @@ module.exports = function (opts) {
       chrome.host = chrome.client = await CDP({
         port: (await launch.launch(opts)).port
       })
-      chrome.client.kill = launch.close
+      chrome.client.kill = function () {
+        launch.close()
+        chrome.client = []
+        chrome.host = null
+      }
       await Promise.all([
         chrome.client.Network.enable(),
         chrome.client.Page.enable(),
