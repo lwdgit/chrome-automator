@@ -124,15 +124,14 @@ class Automator extends Flow {
 
   viewport (viewportWidth = 1920, viewportHeight, mobile = false) {
     return this.pipe(async function () {
-      const { DOM, Emulation } = this.chrome.client
+      const { DOM, Page, Emulation } = this.chrome.client
       const deviceMetrics = {
         width: viewportWidth,
-        height: viewportHeight || viewportWidth,
+        height: viewportHeight || (await Page.getLayoutMetrics()).contentSize.height,
         deviceScaleFactor: 1,
         mobile,
         fitWindow: false
       }
-
       await Emulation.setDeviceMetricsOverride(deviceMetrics)
       if (!viewportHeight) {
         const { root: { nodeId: documentNodeId } } = await DOM.getDocument()
@@ -142,9 +141,9 @@ class Automator extends Flow {
         })
         const {model} = await DOM.getBoxModel({nodeId: bodyNodeId})
         viewportHeight = model.height
+        deviceMetrics.height = viewportHeight
+        await Emulation.setDeviceMetricsOverride(deviceMetrics)
       }
-      deviceMetrics.height = viewportHeight
-      return Emulation.setDeviceMetricsOverride(deviceMetrics)
     })
   }
 
@@ -592,13 +591,13 @@ class Automator extends Flow {
 
   screenshot (path, clip) {
     return this.pipe(async function () {
-      let ext = path == null ? 'jpg' : extname(path)
+      let ext = path == null ? '.jpg' : extname(path)
       debug('.screenshot()')
       let image = await this.chrome.client.Page.captureScreenshot({
         format: ext === '.jpg' ? 'jpeg' : 'png',
         fromSurface: true,
         clip: clip,
-        quality: 100
+        quality: 80
       })
       return path == null ? image.data : this._writeFile(image.data, path)
     })
